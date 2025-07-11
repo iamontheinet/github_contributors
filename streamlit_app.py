@@ -27,6 +27,7 @@ st.markdown("""
         a.published {
             color: #249edc !important;
             text-decoration: none;
+            font-size: 20px;
         }
         a.final {
             color: #ffffff !important;
