@@ -12,34 +12,35 @@ st.set_page_config(
 
 st.markdown("""
     <style type="text/css">
-        blockquote {
-            margin: 1em 0px 1em -1px;
+        div[data-testid='stImage'] {
+            margin: 1em 0px -1em -1px;
             padding: 0px 0px 0px 1.2em;
+            font-size: 10px;
+            border-left: 5px solid rgb(230, 234, 241);
+            # background-color: #249edc;
+            height: 100px;
+        }
+        blockquote {
+            margin: -1em 0px 1em -1px;
+            padding: 10px 0px 0px 1.2em;
             font-size: 10px;
             border-left: 5px solid rgb(230, 234, 241);
             # background-color: #249edc;
             height: 50px;
         }
-        blockquote p {
-            font-size: 25px;
-            color: #ffffff;
-        }
         a.name {
-            color: #ffffff !important;
+            color: #29b5e8;
             text-decoration: none;
             font-size: 20px;
         }
         a.other {
-            color: #ffffff !important;
+            color: #ffffff;
             text-decoration: none;
             font-style: italic;
             font-size: 15px;
         }
         p {
             color: rgb(129, 164, 182);
-        }
-        div[data-testid='stExpanderDetails'] p {
-            color: #ffffff;
         }
         input {
             background-color: #115675 !important;
@@ -50,7 +51,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-GITHUB_TOKEN = os.getenv('G_TOKEN')
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 DATA_FILE = 'contributors.csv'
 BY_CONTRIBUTIONS = {
     '> 1': 1,
@@ -107,11 +108,15 @@ def display_contributors(by_contributions, results_to_display):
                 col = col1 if col_index == 0 else col2 if col_index == 1 else col3 if col_index == 2 else col4 if col_index == 3 else col5
 
                 col.write("<div style='border:1px solid #29b5e8'>", unsafe_allow_html=True)
-                contributor_link = f"<a class='name' href='https://github.com/{login}' target='_blank'>{login}</a>"
+                contributor_url = f"https://github.com/{login}"
+                contributor_img = f"{'https://avatars.githubusercontent.com/' + login}"
+                contributor_link = f"<a class='name' href='{contributor_url}' target='_blank'>{login}</a>"
+
                 contributor_repositories_link = f"<a class='other' href='https://github.com/{login}?tab=repositories' target='_blank'>Repositories</a>"
                 contributor_projects_link = f"<a class='other' href='https://github.com/{login}?tab=projects' target='_blank'>Projects</a>"
                 contributor_followers_link = f"<a class='other' href='https://github.com/{login}?tab=followers' target='_blank'>Followers</a>"
 
+                col.image(contributor_img, width=100)
                 col.markdown(f" > {contributor_link}", unsafe_allow_html=True)
                 col.markdown(f"<h6>Contributions: {contributions}</h6>", unsafe_allow_html=True)
                 col.markdown(f"<h6>{contributor_repositories_link} | {contributor_projects_link} | {contributor_followers_link}</h6>", unsafe_allow_html=True)
@@ -132,7 +137,7 @@ with st.container():
 
     col1, col2, col3 = st.columns([3.2,1.5,1.8])
     with col1:
-        repo = st.text_input("Enter GitHub repository name. For example: apache/spark", key="search_input")
+        repo = st.text_input("Enter GitHub repository name", key="search_input", placeholder="apache/spark", help="Enter the repository name in the format 'owner/repo'.")
     with col2:
         by_contributions = st.radio(
             "Filter by contributions greater than",
