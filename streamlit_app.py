@@ -29,23 +29,11 @@ st.markdown("""
             text-decoration: none;
             font-size: 20px;
         }
-        a.final {
-            color: #ffffff !important;
-            text-decoration: none;
-        }
-        a.hidden {
-            color: red !important;
-            text-decoration: none;
-        }
         a.other {
             color: #ffffff !important;
             text-decoration: none;
             font-style: italic;
             font-size: 15px;
-        }
-        a.updated {
-            # color: #000000 !important;
-            text-decoration: none;
         }
         p {
             color: rgb(129, 164, 182);
