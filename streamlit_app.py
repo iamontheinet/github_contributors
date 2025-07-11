@@ -24,8 +24,8 @@ st.markdown("""
             font-size: 25px;
             color: #ffffff;
         }
-        a.published {
-            color: #249edc !important;
+        a.name {
+            color: #ffffff !important;
             text-decoration: none;
             font-size: 20px;
         }
@@ -37,10 +37,11 @@ st.markdown("""
             color: red !important;
             text-decoration: none;
         }
-        a.draft {
+        a.other {
             color: #ffffff !important;
             text-decoration: none;
             font-style: italic;
+            font-size: 15px;
         }
         a.updated {
             # color: #000000 !important;
@@ -118,10 +119,10 @@ def display_contributors(by_contributions, results_to_display):
                 col = col1 if col_index == 0 else col2 if col_index == 1 else col3 if col_index == 2 else col4 if col_index == 3 else col5
 
                 col.write("<div style='border:1px solid #29b5e8'>", unsafe_allow_html=True)
-                contributor_link = f"<a class='published' href='https://github.com/{login}' target='_blank'>{login}</a>"
-                contributor_repositories_link = f"<a class='published' href='https://github.com/{login}?tab=repositories' target='_blank'>Repositories</a>"
-                contributor_projects_link = f"<a class='published' href='https://github.com/{login}?tab=projects' target='_blank'>Projects</a>"
-                contributor_followers_link = f"<a class='published' href='https://github.com/{login}?tab=followers' target='_blank'>Followers</a>"
+                contributor_link = f"<a class='name' href='https://github.com/{login}' target='_blank'>{login}</a>"
+                contributor_repositories_link = f"<a class='other' href='https://github.com/{login}?tab=repositories' target='_blank'>Repositories</a>"
+                contributor_projects_link = f"<a class='other' href='https://github.com/{login}?tab=projects' target='_blank'>Projects</a>"
+                contributor_followers_link = f"<a class='other' href='https://github.com/{login}?tab=followers' target='_blank'>Followers</a>"
 
                 col.markdown(f" > {contributor_link}", unsafe_allow_html=True)
                 col.markdown(f"<h6>Contributions: {contributions}</h6>", unsafe_allow_html=True)
