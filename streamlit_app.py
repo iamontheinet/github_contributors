@@ -60,7 +60,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+GITHUB_TOKEN = os.getenv('G_TOKEN')
 DATA_FILE = 'contributors.csv'
 BY_CONTRIBUTIONS = {
     '> 1': 1,
