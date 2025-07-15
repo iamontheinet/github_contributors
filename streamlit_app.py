@@ -70,8 +70,6 @@ RESULTS_TO_DISPLAY = {
 GIT_AUTH = Auth.Token(GITHUB_TOKEN)
 GIT = Github(auth=GIT_AUTH)
 
-# Cache the results for 1 hour
-@st.cache_data(ttl=3600, show_spinner=False)
 def get_contributors(repo):
     print(f"Fetching {repo} contributors...")
 
