@@ -3,10 +3,11 @@ from github import Github
 import csv
 import os
 import streamlit as st
+from datetime import datetime, timedelta
 
 # Setup web page
 st.set_page_config(
-     page_title="GitHub Contributors",
+     page_title="GitHub Contributors Influence Analyzer",
      layout="wide"
 )
 
@@ -48,6 +49,9 @@ st.markdown("""
         .st-b6 {
             color: #000000;
         }
+        h6.stats {
+            width: 225px;
+        }    
     </style>
 """, unsafe_allow_html=True)
 
@@ -63,17 +67,15 @@ RESULTS_TO_DISPLAY = {
     'Top 50': 50,
     'Top 100': 100} 
 
-# Streamlit cache to store contributors data
-# This will prevent fetching the same data multiple times
-# and will cache the results for 1 hour
+GIT_AUTH = Auth.Token(GITHUB_TOKEN)
+GIT = Github(auth=GIT_AUTH)
+
+# Cache the results for 1 hour
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_contributors(repo):
     print(f"Fetching {repo} contributors...")
 
-    auth = Auth.Token(GITHUB_TOKEN)
-    g = Github(auth=auth)
-
-    repo = g.get_repo(repo)
+    repo = GIT.get_repo(repo)
     contributors = repo.get_contributors()
     
     print(f"Writing contributors to {DATA_FILE}...")
@@ -83,7 +85,113 @@ def get_contributors(repo):
         for contributor in contributors:
             csv_writer.writerow([contributor.login, contributor.contributions])
 
-def display_contributors(by_contributions, results_to_display):
+def get_influence_color(score):
+    if score >= 400:
+        return "#ff4444"  # Red for high influence
+    elif score >= 250:
+        return "#ff8800"  # Orange for medium-high influence
+    elif score >= 150:
+        return "#ffaa00"  # Yellow for medium influence
+    elif score >= 50:
+        return "#88cc00"  # Light green for low-medium influence
+    else:
+        return "#cccccc"  # Gray for low influence
+    
+# Cache the results for 1 hour
+@st.cache_data(ttl=3600, show_spinner=False)
+def calculate_influence_score(repo, contributor, total_contributions):
+    print(f"Calculating influence score for {contributor} in {repo}...")
+
+    # Base Contributions: (up to 300 points): Total commits/contributions to the repository
+    # Recent Activity: (up to 200 points): Contributions in the last 6 months (shows current engagement)
+    # Code Impact: (up to 50 points): Volume of code changes (lines added/deleted)
+    # Community Involvement: (up to 100 points): Issues created, pull requests, and discussions
+    # Consistency Bonus: (up to 50 points): Ratio of recent to total activity
+
+    repo_obj = GIT.get_repo(repo)
+
+    # Calculate recent activity (last 6 months)
+    six_months_ago = datetime.now() - timedelta(days=180)
+    recent_commits = list(repo_obj.get_commits(author=contributor, since=six_months_ago))
+    recent_contributions = len(recent_commits)
+    
+    # Base score from total contributions
+    base_score = min(total_contributions, 1000) * 0.3  # Cap at 300 points
+    
+    # Recent activity bonus (shows current engagement)
+    recent_bonus = min(recent_contributions, 100) * 2  # Up to 200 points
+
+    # Calculate lines of code impact from recent commits
+    lines_added = 0
+    lines_deleted = 0
+    if recent_commits:
+        for commit in recent_commits[:20]:  # Limit to avoid rate limiting
+            try:
+                stats = commit.stats
+                lines_added += stats.additions
+                lines_deleted += stats.deletions
+            except:
+                continue
+
+    # Code impact bonus (lines added/deleted)
+    code_impact = min((lines_added + lines_deleted) / 100, 50)  # Up to 50 points
+
+    # Check if contributor is a collaborator/maintainer
+    is_collaborator = False
+    try:
+        # Try to check collaborator status - this may fail due to permissions
+        is_collaborator = repo_obj.has_in_collaborators(contributor)
+    except Exception as e:
+        # For public repositories, we can't check collaborator status
+        # Use contribution count as a proxy for influence instead
+        is_collaborator = total_contributions > 100
+        print(f"Using contribution-based estimation for {contributor} (>100 contributions: {is_collaborator}) to assess collaborator status")
+
+    # Collaborator/maintainer bonus (or high contributor bonus if we can't determine status)
+    if is_collaborator:
+        collaborator_bonus = 100
+    elif total_contributions > 100:  # High contributor, likely has influence
+        collaborator_bonus = 50  # Partial bonus
+    else:
+        collaborator_bonus = 0
+    
+    # Get issue/PR involvement (approximate)
+    issue_pr_count = 0
+    try:
+        # Try to get issues and PRs created by this contributor
+        # Use a timeout-like approach by limiting the search
+        issues = list(repo_obj.get_issues(creator=contributor, state='all'))[:5]
+        prs = list(repo_obj.get_pulls(creator=contributor, state='all'))[:5]
+        issue_pr_count = len(issues) + len(prs)
+    except Exception as e:
+        # If we can't fetch issues/PRs, try to estimate based on activity
+        print(f"Using activity-based estimation for {contributor} to calculate number of issues and pull requests opened")
+        try:
+            # Alternative: estimate based on recent commit activity
+            if recent_contributions > 5:
+                issue_pr_count = min(recent_contributions // 4, 8)  # More conservative estimate
+            elif total_contributions > 50:
+                issue_pr_count = min(total_contributions // 20, 5)  # Estimate based on total contributions
+            else:
+                issue_pr_count = 0
+        except:
+            issue_pr_count = 0
+
+    # Issue/PR involvement bonus
+    involvement_bonus = min(issue_pr_count * 10, 100)  # Up to 100 points
+    
+    # Activity consistency bonus (recent vs total ratio)
+    if total_contributions > 0:
+        consistency_bonus = min((recent_contributions / total_contributions) * 50, 50)
+    else:
+        consistency_bonus = 0
+    
+    total_score = (base_score + recent_bonus + code_impact + 
+                  collaborator_bonus + involvement_bonus + consistency_bonus)
+
+    return [round(total_score, 1), recent_contributions, lines_added, lines_deleted, issue_pr_count]
+
+def display_contributors(repo, by_contributions, results_to_display):
     print(f"Displaying contributors...")
 
     results_to_display = RESULTS_TO_DISPLAY[results_to_display]
@@ -112,14 +220,23 @@ def display_contributors(by_contributions, results_to_display):
                 contributor_img = f"{'https://avatars.githubusercontent.com/' + login}"
                 contributor_link = f"<a class='name' href='{contributor_url}' target='_blank'>{login}</a>"
 
-                contributor_repositories_link = f"<a class='other' href='https://github.com/{login}?tab=repositories' target='_blank'>Repositories</a>"
-                contributor_projects_link = f"<a class='other' href='https://github.com/{login}?tab=projects' target='_blank'>Projects</a>"
-                contributor_followers_link = f"<a class='other' href='https://github.com/{login}?tab=followers' target='_blank'>Followers</a>"
-
                 col.image(contributor_img, width=100)
                 col.markdown(f" > {contributor_link}", unsafe_allow_html=True)
-                col.markdown(f"<h6>Contributions: {contributions}</h6>", unsafe_allow_html=True)
-                col.markdown(f"<h6>{contributor_repositories_link} | {contributor_projects_link} | {contributor_followers_link}</h6>", unsafe_allow_html=True)
+                col.markdown(f"<h6>📊 Contributions: {contributions}</h6>", unsafe_allow_html=True)
+
+                # contributor_repositories_link = f"<a class='other' href='https://github.com/{login}?tab=repositories' target='_blank'>Repositories</a>"
+                # contributor_projects_link = f"<a class='other' href='https://github.com/{login}?tab=projects' target='_blank'>Projects</a>"
+                # contributor_followers_link = f"<a class='other' href='https://github.com/{login}?tab=followers' target='_blank'>Followers</a>"
+                # col.markdown(f"<h6>{contributor_repositories_link} | {contributor_projects_link} | {contributor_followers_link}</h6>", unsafe_allow_html=True)
+
+                if col.button("Calculate Influence Score", key=f"calc_{login}"):
+                    influence_score,recent_contributions, lines_added, lines_deleted, issue_pr_count = calculate_influence_score(repo, login, int(contributions))
+                    influence_color = get_influence_color(influence_score)
+                    col.markdown(f"<h6 class='stats' style='color:{influence_color};'>🎯 Influence Score: {influence_score}</h6>", help="🔴 400+: Highly influential\n🟠 250-399: Very influential\n🟡 150-249: Moderately influential\n🟢 50-149: Growing influence\n⚪ 0-49: Limited influence", unsafe_allow_html=True)
+                    col.markdown(f"<h6 class='stats'>🔥 Recent Activity (6mo): {recent_contributions}</h6>", help="Number of contributions in the last 6 months", unsafe_allow_html=True)
+                    col.markdown(f"<h6 class='stats'>📝 Code Impact: +{lines_added} -{lines_deleted}</h6>", help="Estimated volume of code changes (lines added/deleted)", unsafe_allow_html=True)
+                    col.markdown(f"<h6 class='stats'>💬 Issues/PRs: {issue_pr_count}</h6>", help="Estimated number of issues and pull requests opened based on total contributions", unsafe_allow_html=True)
+
                 col.write("</div>", unsafe_allow_html=True)
                 
                 if (i % 5) == 0:
@@ -131,7 +248,7 @@ def display_contributors(by_contributions, results_to_display):
                 i += 1
 
 with st.container():
-    st.header(f"GitHub Contributors")
+    st.header(f"GitHub Contributors Influence Analyzer")
     st.caption(f"App developed by [Dash](https://www.linkedin.com/in/dash-desai/)")
     st.markdown("___")
 
@@ -157,7 +274,7 @@ with st.container():
 
 if repo:
     get_contributors(repo)
-    display_contributors(by_contributions, results_to_display)
+    display_contributors(repo, by_contributions, results_to_display)
     print(f"Done!")
 
 

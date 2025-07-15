@@ -1,2 +1,4 @@
 pygithub
 beautifulsoup4
+pandas
+streamlit
