@@ -50,7 +50,7 @@ st.markdown("""
             color: #000000;
         }
         h6.stats {
-            width: 200px;
+            width: 225px;
         }    
     </style>
 """, unsafe_allow_html=True)
@@ -231,7 +231,7 @@ def display_contributors(repo, by_contributions, results_to_display):
                     influence_score,recent_contributions, lines_added, lines_deleted, issue_pr_count = calculate_influence_score(repo, login, int(contributions))
                     influence_color = get_influence_color(influence_score)
                     col.markdown(f"<h6 class='stats' style='color:{influence_color};'>🎯 Influence Score: {influence_score}</h6>", help="🔴 400+: Highly influential\n🟠 250-399: Very influential\n🟡 150-249: Moderately influential\n🟢 50-149: Growing influence\n⚪ 0-49: Limited influence", unsafe_allow_html=True)
-                    col.markdown(f"<h6 class='stats'>🔥 Recent Activity (6mo): {recent_contributions}</h6>", help="Number of contributions in the last 6 months", unsafe_allow_html=True)
+                    col.markdown(f"<h6 class='stats'>🔥 Recent Activity: {recent_contributions}</h6>", help="Number of contributions in the last 6 months", unsafe_allow_html=True)
                     col.markdown(f"<h6 class='stats'>📝 Code Impact: +{lines_added} -{lines_deleted}</h6>", help="Estimated volume of code changes (lines added/deleted)", unsafe_allow_html=True)
                     col.markdown(f"<h6 class='stats'>💬 Issues/PRs: {issue_pr_count}</h6>", help="Estimated number of issues and pull requests opened based on total contributions", unsafe_allow_html=True)
 
