@@ -50,7 +50,7 @@ st.markdown("""
             color: #000000;
         }
         h6.stats {
-            width: 225px;
+            width: 200px;
         }    
     </style>
 """, unsafe_allow_html=True)
